@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>复利增长计算器</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f5f5f3;
+      color: #1a1a1a;
+      padding: 2rem 1rem;
+      min-height: 100vh;
+    }
+    .container { max-width: 640px; margin: 0 auto; }
+    h1 { font-size: 20px; font-weight: 500; margin-bottom: 1.5rem; color: #1a1a1a; }
+    .card {
+      background: #ebebeb;
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+    }
+    .metric-label { font-size: 13px; color: #666; margin: 0 0 4px; }
+    .metric-value { font-size: 22px; font-weight: 500; margin: 0; color: #1a1a1a; }
+    .metric-sub { font-size: 12px; color: #999; margin: 4px 0 0; }
+    .grid3 { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 10px; margin-bottom: 1.25rem; }
+    .slider-row { display: flex; align-items: center; gap: 10px; margin-bottom: 1rem; }
+    .slider-label { font-size: 13px; color: #666; min-width: 80px; }
+    .slider-val { font-size: 13px; font-weight: 500; min-width: 70px; text-align: right; color: #1a1a1a; }
+    input[type=range] {
+      flex: 1;
+      accent-color: #1D9E75;
+      cursor: pointer;
+    }
+    .milestone {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 8px 0;
+      border-bottom: 0.5px solid rgba(0,0,0,0.1);
+      font-size: 13px;
+    }
+    .milestone:last-child { border-bottom: none; }
+    .milestone-label { color: #666; }
+    .milestone-val { font-weight: 500; color: #1a1a1a; }
+    .milestone-days { color: #999; font-size: 12px; }
+    .highlight { color: #1D9E75; font-weight: 500; }
+    h3 { font-size: 14px; font-weight: 500; color: #666; margin: 0 0 10px; }
+    .section { margin-bottom: 1.25rem; }
+    .chart-wrap { position: relative; width: 100%; height: 220px; background: #fff; border-radius: 12px; padding: 1rem; }
+
+    .date-row { display: flex; align-items: center; gap: 10px; margin-bottom: 1rem; }
+    .date-row .slider-label { font-size: 13px; color: #666; min-width: 80px; }
+    input[type=date] {
+      flex: 1;
+      font-size: 13px;
+      padding: 6px 10px;
+      border: 1px solid rgba(0,0,0,0.12);
+      border-radius: 8px;
+      background: #fff;
+      color: #1a1a1a;
+      outline: none;
+      cursor: pointer;
+    }
+    .divider { border: none; border-top: 0.5px solid rgba(0,0,0,0.1); margin: 2rem 0 1.5rem; }
+    .cat-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 1.25rem; }
+    .cat-tab {
+      font-size: 12px; padding: 4px 10px; border-radius: 20px; cursor: pointer;
+      border: 1px solid rgba(0,0,0,0.12); background: transparent; color: #666;
+      transition: all 0.15s;
+    }
+    .cat-tab.active { background: #1D9E75; color: #fff; border-color: #1D9E75; }
+    .info-row { display: flex; justify-content: space-between; font-size: 12px; color: #999; margin-top: 6px; }
+    .slider-controls { display: flex; align-items: center; gap: 4px; min-width: 110px; justify-content: flex-end; }
+    .step-btn {
+      width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
+      border: 1px solid rgba(0,0,0,0.15); background: transparent;
+      font-size: 17px; line-height: 1; cursor: pointer; color: #555;
+      display: flex; align-items: center; justify-content: center; padding: 0;
+      transition: background 0.1s;
+    }
+    .step-btn:active { background: rgba(0,0,0,0.1); }
+
+    @media (prefers-color-scheme: dark) {
+      .step-btn { border-color: rgba(255,255,255,0.15); color: #aaa; }
+      .step-btn:active { background: rgba(255,255,255,0.1); }
+      body { background: #1a1a18; color: #e8e8e4; }
+      h1 { color: #e8e8e4; }
+      .card { background: #2a2a28; }
+      .metric-label { color: #999; }
+      .metric-value { color: #e8e8e4; }
+      .metric-sub { color: #666; }
+      .slider-label { color: #999; }
+      .slider-val { color: #e8e8e4; }
+      .milestone { border-bottom-color: rgba(255,255,255,0.08); }
+      .milestone-label { color: #999; }
+      .milestone-val { color: #e8e8e4; }
+      .milestone-days { color: #666; }
+      h3 { color: #999; }
+      .chart-wrap { background: #2a2a28; }
+      .date-row .slider-label { color: #999; }
+      input[type=date] { background: #2a2a28; color: #e8e8e4; border-color: rgba(255,255,255,0.1); }
+      .divider { border-top-color: rgba(255,255,255,0.08); }
+      .cat-tab { border-color: rgba(255,255,255,0.12); color: #888; }
+      .info-row { color: #666; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>复利增长计算器</h1>
+
+    <div class="section">
+      <div class="slider-row">
+        <span class="slider-label">初始本金</span>
+        <input type="range" min="5000" max="50000" step="100" value="13200" id="principal">
+        <div class="slider-controls">
+          <button class="step-btn" data-target="principal" data-dir="-1">−</button>
+          <span class="slider-val" id="principalOut">$13,200</span>
+          <button class="step-btn" data-target="principal" data-dir="1">+</button>
+        </div>
+      </div>
+      <div class="slider-row">
+        <span class="slider-label">每日收益率</span>
+        <input type="range" min="0.1" max="1.0" step="0.01" value="0.3" id="rate">
+        <div class="slider-controls">
+          <button class="step-btn" data-target="rate" data-dir="-1">−</button>
+          <span class="slider-val" id="rateOut">0.30%</span>
+          <button class="step-btn" data-target="rate" data-dir="1">+</button>
+        </div>
+      </div>
+      <div class="info-row" style="margin-top:-6px; margin-bottom:1rem;">
+        <span>每日收益</span>
+        <span id="dailyEarningInline" class="highlight">—</span>
+      </div>
+      <div class="slider-row">
+        <span class="slider-label">目标金额</span>
+        <input type="range" min="50000" max="1000000" step="10000" value="144718" id="target">
+        <div class="slider-controls">
+          <button class="step-btn" data-target="target" data-dir="-1">−</button>
+          <span class="slider-val" id="targetOut">$144,718</span>
+          <button class="step-btn" data-target="target" data-dir="1">+</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid3">
+      <div class="card">
+        <p class="metric-label">需要天数</p>
+        <p class="metric-value highlight" id="days">—</p>
+        <p class="metric-sub" id="yearsMonths">—</p>
+      </div>
+      <div class="card">
+        <p class="metric-label">约合人民币</p>
+        <p class="metric-value" id="targetCNY">—</p>
+        <p class="metric-sub">按 7 汇率</p>
+      </div>
+      <div class="card">
+        <p class="metric-label">总盈利</p>
+        <p class="metric-value" id="totalProfit">—</p>
+        <p class="metric-sub">美元收益</p>
+      </div>
+    </div>
+
+    <div class="card section">
+      <h3>增长里程碑</h3>
+      <div id="milestones"></div>
+    </div>
+
+    <div class="chart-wrap">
+      <canvas id="chart"></canvas>
+    </div>
+
+    <hr class="divider">
+    <h1>做市收益计算器</h1>
+
+    <div class="section">
+      <div class="cat-tabs" id="catTabs">
+        <button class="cat-tab active" data-cat="sports">Sports / Politics / Finance</button>
+        <button class="cat-tab" data-cat="economics">Economics / Culture / Weather</button>
+        <button class="cat-tab" data-cat="crypto">Crypto</button>
+        <button class="cat-tab" data-cat="geo">Geopolitics</button>
+      </div>
+      <div class="slider-row">
+        <span class="slider-label">成交价格</span>
+        <input type="range" min="0.1" max="99.9" step="0.1" value="50" id="mmPrice">
+        <div class="slider-controls">
+          <button class="step-btn" data-target="mmPrice" data-dir="-1">−</button>
+          <span class="slider-val" id="mmPriceOut">50.0¢</span>
+          <button class="step-btn" data-target="mmPrice" data-dir="1">+</button>
+        </div>
+      </div>
+      <div class="info-row">
+        <span>p × (1-p) 最大值在 50¢，越靠近 0 或 100 越小</span>
+        <span id="mmPriceWeight">0.2500</span>
+      </div>
+      <div class="slider-row" style="margin-top:1rem">
+        <span class="slider-label">成交数量</span>
+        <input type="range" min="100" max="5000" step="100" value="1000" id="mmShares">
+        <div class="slider-controls">
+          <button class="step-btn" data-target="mmShares" data-dir="-1">−</button>
+          <span class="slider-val" id="mmSharesOut">1,000 股</span>
+          <button class="step-btn" data-target="mmShares" data-dir="1">+</button>
+        </div>
+      </div>
+      <div class="info-row" id="mmRateInfo">费率: — &nbsp;|&nbsp; 返佣比例: —</div>
+    </div>
+
+    <div class="grid3" id="mmResults">
+      <div class="card">
+        <p class="metric-label">Taker 手续费</p>
+        <p class="metric-value" id="mmTakerFee">—</p>
+        <p class="metric-sub">此笔成交产生</p>
+      </div>
+      <div class="card">
+        <p class="metric-label">返佣池份额</p>
+        <p class="metric-value" id="mmFeeEquiv">—</p>
+        <p class="metric-sub">fee_equivalent</p>
+      </div>
+      <div class="card">
+        <p class="metric-label">预估做市收入</p>
+        <p class="metric-value highlight" id="mmRebate">—</p>
+        <p class="metric-sub" id="mmRebateSub">按市场占比估算</p>
+      </div>
+    </div>
+
+    <hr class="divider">
+    <h1>年化收益计算器</h1>
+
+    <div class="section">
+      <div class="slider-row">
+        <span class="slider-label">买入价格</span>
+        <input type="range" min="80" max="99.9" step="0.1" value="95" id="buyPrice">
+        <div class="slider-controls">
+          <button class="step-btn" data-target="buyPrice" data-dir="-1">−</button>
+          <span class="slider-val" id="buyPriceOut">95.0</span>
+          <button class="step-btn" data-target="buyPrice" data-dir="1">+</button>
+        </div>
+      </div>
+      <div class="slider-row">
+        <span class="slider-label">面值</span>
+        <input type="range" min="100" max="100" step="1" value="100" id="faceValue" style="display:none">
+        <span style="flex:1; font-size:13px; color:#999;">固定 100</span>
+        <span class="slider-val">100</span>
+      </div>
+      <div class="date-row">
+        <span class="slider-label">到期日</span>
+        <input type="date" id="maturityDate" value="2026-12-31">
+      </div>
+      <div class="cat-tabs" id="dateTabs"></div>
+    </div>
+
+    <div class="grid3">
+      <div class="card">
+        <p class="metric-label">持有天数</p>
+        <p class="metric-value highlight" id="holdDays">—</p>
+        <p class="metric-sub" id="holdDaysLabel">距今</p>
+      </div>
+      <div class="card">
+        <p class="metric-label">总收益率</p>
+        <p class="metric-value" id="totalReturn">—</p>
+        <p class="metric-sub">到期收益 / 成本</p>
+      </div>
+      <div class="card">
+        <p class="metric-label">年化收益率</p>
+        <p class="metric-value highlight" id="annualReturn">—</p>
+        <p class="metric-sub">复利折算</p>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+  <script>
+    const CNY_RATE = 7;
+    let chartInstance = null;
+
+    function fmt(n) { return n.toLocaleString('en-US', {maximumFractionDigits: 0}); }
+    function fmtCNY(n) {
+      if (n >= 10000) return (n / 10000).toFixed(1) + '万';
+      return fmt(n);
+    }
+
+    function calc() {
+      const P = parseFloat(document.getElementById('principal').value);
+      const r = parseFloat(document.getElementById('rate').value) / 100;
+      const targetUSD = parseFloat(document.getElementById('target').value);
+
+      document.getElementById('principalOut').textContent = '$' + fmt(P);
+      document.getElementById('rateOut').textContent = (r * 100).toFixed(2) + '%';
+      document.getElementById('targetOut').textContent = '$' + fmt(targetUSD);
+      document.getElementById('targetCNY').textContent = fmtCNY(Math.round(targetUSD * CNY_RATE)) + ' CNY';
+
+      const days = Math.log(targetUSD / P) / Math.log(1 + r);
+      const daysRounded = Math.ceil(days);
+      const years = Math.floor(daysRounded / 365);
+      const months = Math.floor((daysRounded % 365) / 30);
+      const remDays = daysRounded % 30;
+
+      document.getElementById('days').textContent = fmt(daysRounded) + ' 天';
+      let ym = '';
+      if (years > 0) ym += years + ' 年 ';
+      if (months > 0) ym += months + ' 个月 ';
+      ym += remDays + ' 天';
+      document.getElementById('yearsMonths').textContent = ym;
+      document.getElementById('totalProfit').textContent = '+$' + fmt(Math.round(targetUSD - P));
+
+      const milestoneTargetsUSD = [50000, 100000, 200000, 500000];
+      let milestonesHTML = '';
+      for (const tUSD of milestoneTargetsUSD) {
+        if (tUSD <= P) {
+          milestonesHTML += `<div class="milestone"><span class="milestone-label">$${fmt(tUSD)}</span><span class="milestone-val highlight">已达到</span></div>`;
+          continue;
+        }
+        const d = Math.ceil(Math.log(tUSD / P) / Math.log(1 + r));
+        const y = Math.floor(d / 365), mo = Math.floor((d % 365) / 30), rd = d % 30;
+        let label = '';
+        if (y > 0) label += y + '年';
+        if (mo > 0) label += mo + '月';
+        label += rd + '天';
+        const active = Math.abs(tUSD - targetUSD) < 1;
+        milestonesHTML += `<div class="milestone">
+          <span class="milestone-label">$${fmt(tUSD)}</span>
+          <span class="milestone-days">${fmt(d)} 天</span>
+          <span class="milestone-val ${active ? 'highlight' : ''}">${label}</span>
+        </div>`;
+      }
+      document.getElementById('milestones').innerHTML = milestonesHTML;
+
+      const dailyEarning = P * r;
+      document.getElementById('dailyEarningInline').textContent =
+        '$' + dailyEarning.toFixed(2) + ' / 天  ≈ ¥' + fmtCNY(Math.round(dailyEarning * CNY_RATE));
+
+      const steps = 50;
+      const step = Math.max(1, Math.floor(daysRounded / steps));
+      const labels = [], data = [];
+      for (let d = 0; d <= daysRounded; d += step) {
+        labels.push(d === 0 ? '起点' : d + '天');
+        data.push(Math.round(P * Math.pow(1 + r, d)));
+      }
+      if (labels[labels.length - 1] !== daysRounded + '天') {
+        labels.push(daysRounded + '天');
+        data.push(Math.round(targetUSD));
+      }
+
+      const isDark = matchMedia('(prefers-color-scheme: dark)').matches;
+      const lineColor = '#1D9E75';
+      const fillColor = isDark ? 'rgba(29,158,117,0.15)' : 'rgba(29,158,117,0.08)';
+      const textColor = isDark ? '#aaa' : '#888';
+      const gridColor = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)';
+
+      const logP = Math.log(P);
+      const logT = Math.log(targetUSD);
+
+      if (chartInstance) chartInstance.destroy();
+      chartInstance = new Chart(document.getElementById('chart'), {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{
+            data,
+            borderColor: lineColor,
+            backgroundColor: fillColor,
+            fill: true,
+            tension: 0.4,
+            pointRadius: 0,
+            borderWidth: 2,
+            yAxisID: 'y'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: ctx => {
+                  const v = ctx.parsed.y;
+                  const pct = ((Math.log(v) - logP) / (logT - logP) * 100).toFixed(1);
+                  return '$' + fmt(v) + ' ≈ ¥' + fmtCNY(Math.round(v * CNY_RATE)) + '  进度 ' + pct + '%';
+                }
+              }
+            }
+          },
+          scales: {
+            x: { ticks: { color: textColor, font: { size: 11 }, maxTicksLimit: 6, autoSkip: true }, grid: { color: gridColor } },
+            y: {
+              type: 'logarithmic',
+              ticks: { color: textColor, font: { size: 11 }, callback: v => '$' + fmt(v) },
+              grid: { color: gridColor }
+            },
+            yProgress: {
+              type: 'logarithmic',
+              position: 'right',
+              min: P,
+              max: targetUSD,
+              grid: { drawOnChartArea: false },
+              ticks: {
+                color: '#1D9E75',
+                font: { size: 10 },
+                callback: (v) => {
+                  const pct = (Math.log(v) - logP) / (logT - logP) * 100;
+                  if (pct < 2) return '0%';
+                  if (Math.abs(pct - 25) < 4) return '25%';
+                  if (Math.abs(pct - 50) < 4) return '50%';
+                  if (Math.abs(pct - 75) < 4) return '75%';
+                  if (pct > 98) return '100%';
+                  return '';
+                }
+              },
+              afterBuildTicks: (axis) => {
+                axis.ticks = [0, 25, 50, 75, 100].map(pct => ({
+                  value: Math.exp(logP + (logT - logP) * pct / 100)
+                }));
+              }
+            }
+          }
+        }
+      });
+    }
+
+    ['principal', 'rate', 'target'].forEach(id => {
+      document.getElementById(id).addEventListener('input', calc);
+    });
+
+    document.querySelectorAll('.step-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const input = document.getElementById(btn.dataset.target);
+        const step = parseFloat(input.step);
+        const min = parseFloat(input.min);
+        const max = parseFloat(input.max);
+        const newVal = Math.min(max, Math.max(min, parseFloat(input.value) + parseFloat(btn.dataset.dir) * step));
+        input.value = parseFloat(newVal.toFixed(10));
+        input.dispatchEvent(new Event('input'));
+      });
+    });
+
+    calc();
+
+    function calcAnnual() {
+      const buy = parseFloat(document.getElementById('buyPrice').value);
+      const face = 100;
+      const maturity = document.getElementById('maturityDate').value;
+
+      document.getElementById('buyPriceOut').textContent = buy.toFixed(1);
+
+      if (!maturity) return;
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const matDate = new Date(maturity + 'T00:00:00');
+      const days = Math.round((matDate - today) / 86400000);
+
+      if (days <= 0) {
+        document.getElementById('holdDays').textContent = '已到期';
+        document.getElementById('totalReturn').textContent = '—';
+        document.getElementById('annualReturn').textContent = '—';
+        return;
+      }
+
+      const totalReturn = (face - buy) / buy;
+      const annualReturn = Math.pow(1 + totalReturn, 365 / days) - 1;
+
+      document.getElementById('holdDays').textContent = days + ' 天';
+      document.getElementById('totalReturn').textContent = (totalReturn * 100).toFixed(2) + '%';
+      document.getElementById('annualReturn').textContent = (annualReturn * 100).toFixed(2) + '%';
+    }
+
+    function buildDateTabs() {
+      const today = new Date();
+      today.setHours(0,0,0,0);
+      const y = today.getFullYear();
+      const nm = today.getMonth();
+      const qMonths = [2, 5, 8, 11];
+      const qLabels = ['3月底', '6月底', '9月底', '12月底'];
+      const candidates = [
+        { label: '本月底', d: new Date(y, nm + 1, 0) },
+        { label: '下月底', d: new Date(y, nm + 2, 0) },
+        ...qMonths.map((m, i) => ({ label: qLabels[i], d: new Date(y, m + 1, 0) })),
+        ...qMonths.map((m, i) => ({ label: (y+1)+'年'+qLabels[i], d: new Date(y+1, m + 1, 0) })),
+      ].filter(x => x.d > today);
+
+      const tabs = document.getElementById('dateTabs');
+      tabs.innerHTML = '';
+      candidates.forEach(({ label, d }) => {
+        const iso = d.toISOString().slice(0, 10);
+        const btn = document.createElement('button');
+        btn.className = 'cat-tab';
+        btn.textContent = label;
+        btn.addEventListener('click', () => {
+          document.getElementById('maturityDate').value = iso;
+          document.querySelectorAll('#dateTabs .cat-tab').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          calcAnnual();
+        });
+        tabs.appendChild(btn);
+      });
+    }
+
+    document.getElementById('buyPrice').addEventListener('input', calcAnnual);
+    document.getElementById('maturityDate').addEventListener('input', () => {
+      document.querySelectorAll('#dateTabs .cat-tab').forEach(b => b.classList.remove('active'));
+      calcAnnual();
+    });
+    buildDateTabs();
+    calcAnnual();
+
+    // Market maker calculator
+    const MM_CATS = {
+      sports:    { label: 'Sports / Politics / Finance', feeRate: 0.02, rebateRate: 0.25 },
+      economics: { label: 'Economics / Culture / Weather', feeRate: 0.05, rebateRate: 0.25 },
+      crypto:    { label: 'Crypto', feeRate: 0.072, rebateRate: 0.20 },
+      geo:       { label: 'Geopolitics', feeRate: 0, rebateRate: 0 },
+    };
+    let mmCat = 'sports';
+
+    document.querySelectorAll('.cat-tab').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.cat-tab').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        mmCat = btn.dataset.cat;
+        calcMM();
+      });
+    });
+
+    function calcMM() {
+      const p = parseFloat(document.getElementById('mmPrice').value) / 100;
+      const C = parseFloat(document.getElementById('mmShares').value);
+      const cat = MM_CATS[mmCat];
+
+      document.getElementById('mmPriceOut').textContent = (p * 100).toFixed(1) + '¢';
+      document.getElementById('mmSharesOut').textContent = fmt(C) + ' 股';
+      document.getElementById('mmPriceWeight').textContent = (p * (1 - p)).toFixed(4);
+
+      if (cat.feeRate === 0) {
+        document.getElementById('mmRateInfo').textContent = '此分类免费，无返佣';
+        document.getElementById('mmTakerFee').textContent = '—';
+        document.getElementById('mmFeeEquiv').textContent = '—';
+        document.getElementById('mmRebate').textContent = '—';
+        document.getElementById('mmRebateSub').textContent = '此分类无做市收益';
+        return;
+      }
+
+      document.getElementById('mmRateInfo').textContent =
+        `Taker 费率: ${(cat.feeRate * 100).toFixed(1)}%  |  返佣比例: ${(cat.rebateRate * 100).toFixed(0)}%`;
+
+      const feeEquiv = C * cat.feeRate * p * (1 - p);
+      const takerFee = feeEquiv; // taker pays same formula
+      const rebate = feeEquiv * cat.rebateRate;
+
+      document.getElementById('mmTakerFee').textContent = takerFee.toFixed(5) + ' USDC';
+      document.getElementById('mmFeeEquiv').textContent = feeEquiv.toFixed(5) + ' USDC';
+      document.getElementById('mmRebate').textContent = rebate.toFixed(5) + ' USDC';
+      document.getElementById('mmRebateSub').textContent = '单笔成交做市收入';
+    }
+
+    ['mmPrice', 'mmShares'].forEach(id => {
+      document.getElementById(id).addEventListener('input', calcMM);
+    });
+    calcMM();
+  </script>
+</body>
+</html>
