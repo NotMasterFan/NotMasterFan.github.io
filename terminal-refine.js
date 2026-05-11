@@ -1,0 +1,1 @@
+window.addEventListener('load',function(){var h=document.querySelector('.hero h1');if(h){h.textContent='PMKT CALCULATOR TERMINAL';var s=document.createElement('div');s.className='cn-subtitle';s.textContent='收益计算器';h.after(s)}document.querySelectorAll('.pill button').forEach(function(b){b.textContent=b.dataset.d==='-1'?'[-]':'[+]'});});
