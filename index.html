@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Polymarket Profit Calculator</title>
+<meta name="description" content="Compound growth, Polymarket maker rebate and annualized yield-to-maturity calculators, using the current Polymarket fee schedule." />
+<meta property="og:title" content="Polymarket Profit Calculator" />
+<meta property="og:description" content="Compound growth, maker rebate and yield-to-maturity calculators for Polymarket traders." />
+<meta property="og:type" content="website" />
+<meta name="color-scheme" content="light dark" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%233355ff'/%3E%3Cpath d='M8 22l5.5-6 4.5 3.5L24 11' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<!-- Non-blocking font load: the page renders with system fonts if this is slow or unavailable -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=Geist+Mono:wght@400;500;600&display=swap" media="print" onload="this.media='all'" />
+<script>
+  try { const t = localStorage.getItem('theme'); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+</script>
+<style>
+:root {
+  --bg: #f3f3ef;
+  --surface: #ffffff;
+  --surface-2: #f7f7f3;
+  --ink: #0d1016;
+  --ink-2: #454c5a;
+  --muted: #7b8291;
+  --line: #e6e5df;
+  --line-2: #d4d3cc;
+  --accent: #3355ff;
+  --accent-2: #6a3dff;
+  --accent-soft: rgba(51, 85, 255, .09);
+  --pos: #0a9467;
+  --neg: #d4462f;
+  --shadow: 0 1px 2px rgba(13,16,22,.04), 0 12px 32px -12px rgba(13,16,22,.12);
+  --radius: 20px;
+  --sans: "Geist", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #090b0f; --surface: #11141a; --surface-2: #161a21; --ink: #eef1f6; --ink-2: #b3bac7; --muted: #7c8494;
+    --line: #20242d; --line-2: #2c313c; --accent: #6f86ff; --accent-2: #9a7bff; --accent-soft: rgba(111,134,255,.12);
+    --pos: #34d399; --neg: #ff7a66; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 16px 40px -16px rgba(0,0,0,.6);
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #090b0f; --surface: #11141a; --surface-2: #161a21; --ink: #eef1f6; --ink-2: #b3bac7; --muted: #7c8494;
+  --line: #20242d; --line-2: #2c313c; --accent: #6f86ff; --accent-2: #9a7bff; --accent-soft: rgba(111,134,255,.12);
+  --pos: #34d399; --neg: #ff7a66; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 16px 40px -16px rgba(0,0,0,.6);
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 80px; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font-family: var(--sans); font-size: 15px; line-height: 1.5;
+  -webkit-font-smoothing: antialiased; font-feature-settings: "ss01";
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+button, input, select { font: inherit; color: inherit; }
+.num-font { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+/* ---------- Nav ---------- */
+.nav {
+  position: sticky; top: 0; z-index: 20;
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  backdrop-filter: saturate(1.4) blur(14px); -webkit-backdrop-filter: saturate(1.4) blur(14px);
+  border-bottom: 1px solid var(--line);
+}
+.nav-in { max-width: 1160px; margin: auto; padding: 12px 20px; display: flex; align-items: center; gap: 20px; }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 700; letter-spacing: -.02em; color: var(--ink); }
+.brand:hover { text-decoration: none; }
+.brand svg { width: 28px; height: 28px; flex: none; }
+.nav-links { display: flex; gap: 4px; margin-left: auto; }
+.nav-links a { color: var(--ink-2); font-size: 14px; font-weight: 500; padding: 6px 12px; border-radius: 8px; }
+.nav-links a:hover { background: var(--surface); text-decoration: none; color: var(--ink); }
+.icon-btn { width: 36px; height: 36px; display: grid; place-items: center; border: 1px solid var(--line); background: var(--surface); border-radius: 10px; cursor: pointer; color: var(--ink-2); flex: none; }
+.icon-btn:hover { color: var(--ink); border-color: var(--line-2); }
+.icon-btn svg { width: 18px; height: 18px; }
+@media (max-width: 760px) { .nav-links { display: none; } .icon-btn { margin-left: auto; } }
+
+/* ---------- Layout ---------- */
+.wrap { max-width: 1160px; margin: auto; padding: 0 20px; }
+.hero { padding: 72px 0 40px; }
+.eyebrow { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--accent); background: var(--accent-soft); padding: 5px 12px; border-radius: 999px; }
+.eyebrow::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+h1 { font-size: clamp(38px, 6vw, 68px); line-height: 1; letter-spacing: -.045em; font-weight: 800; margin: 20px 0 18px; max-width: 14ch; }
+h1 span { background: linear-gradient(100deg, var(--accent), var(--accent-2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.lede { font-size: 18px; color: var(--ink-2); max-width: 58ch; margin: 0; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 26px; }
+.chip { font-size: 13px; color: var(--ink-2); border: 1px solid var(--line); background: var(--surface); padding: 6px 12px; border-radius: 999px; }
+.chip b { color: var(--ink); font-weight: 600; }
+
+section.calc { padding: 40px 0; border-top: 1px solid var(--line); }
+.sec-head { display: flex; align-items: baseline; gap: 14px; margin-bottom: 22px; flex-wrap: wrap; }
+.sec-num { font-family: var(--mono); font-size: 13px; color: var(--muted); }
+h2 { font-size: clamp(24px, 3vw, 32px); letter-spacing: -.035em; margin: 0; font-weight: 700; }
+.sec-desc { color: var(--muted); font-size: 14px; margin: 0; flex-basis: 100%; max-width: 70ch; }
+
+.grid { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 16px; align-items: start; }
+@media (max-width: 900px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 24px; min-width: 0; }
+.card-title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 18px; }
+.stack { display: grid; gap: 16px; min-width: 0; }
+
+/* ---------- Fields ---------- */
+.field { padding: 14px 0 18px; border-bottom: 1px dashed var(--line); }
+.field:first-of-type { padding-top: 0; }
+.field:last-child { border-bottom: 0; padding-bottom: 0; }
+.field-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.field label, .field .lbl { font-size: 14px; font-weight: 500; color: var(--ink-2); }
+.stepper { display: flex; align-items: stretch; border: 1px solid var(--line-2); border-radius: 10px; background: var(--surface-2); overflow: hidden; }
+.stepper:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.stepper button { width: 32px; border: 0; background: transparent; cursor: pointer; color: var(--muted); font-size: 16px; line-height: 1; }
+.stepper button:hover { color: var(--ink); background: var(--line); }
+.stepper input { width: 118px; border: 0; background: transparent; text-align: center; font-family: var(--mono); font-size: 14px; font-weight: 500; padding: 7px 0; outline: none; font-variant-numeric: tabular-nums; }
+
+input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 6px; border-radius: 999px; margin: 0; cursor: pointer;
+  background: linear-gradient(to right, var(--accent) var(--pct, 50%), var(--line-2) var(--pct, 50%)); }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%; background: var(--surface); border: 2px solid var(--accent); box-shadow: 0 2px 6px rgba(0,0,0,.18); transition: transform .12s; }
+input[type=range]::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: var(--surface); border: 2px solid var(--accent); box-shadow: 0 2px 6px rgba(0,0,0,.18); }
+input[type=range]:hover::-webkit-slider-thumb { transform: scale(1.12); }
+input[type=range]:focus-visible { outline: 2px solid var(--accent); outline-offset: 6px; }
+.range-ends { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 11px; color: var(--muted); margin-top: 8px; }
+
+input[type=date], select { border: 1px solid var(--line-2); background: var(--surface-2); border-radius: 10px; padding: 8px 12px; font-size: 14px; font-family: var(--mono); }
+input[type=date]:focus, select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+select { font-family: var(--sans); max-width: 100%; }
+
+.pills { display: flex; flex-wrap: wrap; gap: 6px; }
+.pill { border: 1px solid var(--line); background: var(--surface-2); color: var(--ink-2); border-radius: 999px; padding: 6px 12px; font-size: 13px; font-weight: 500; cursor: pointer; }
+.pill:hover { border-color: var(--line-2); color: var(--ink); }
+.pill.active { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+
+.seg { display: inline-flex; background: var(--surface-2); border: 1px solid var(--line); border-radius: 12px; padding: 3px; gap: 2px; }
+.seg button { border: 0; background: transparent; padding: 6px 14px; border-radius: 9px; font-size: 13px; font-weight: 500; color: var(--ink-2); cursor: pointer; }
+.seg button.active { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+
+/* ---------- Category cards ---------- */
+.cats { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin-bottom: 16px; }
+@media (max-width: 900px) { .cats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.cat { text-align: left; border: 1px solid var(--line); background: var(--surface); border-radius: 14px; padding: 12px 14px; cursor: pointer; box-shadow: var(--shadow); transition: border-color .15s, transform .15s; }
+.cat:hover { border-color: var(--line-2); transform: translateY(-1px); }
+.cat.active { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft), var(--shadow); }
+.cat-name { display: block; font-size: 14px; font-weight: 600; letter-spacing: -.01em; }
+.cat-meta { display: block; font-family: var(--mono); font-size: 12px; color: var(--muted); margin-top: 4px; }
+.cat.active .cat-meta { color: var(--accent); }
+
+/* ---------- Results ---------- */
+.headline { position: relative; overflow: hidden; border-radius: var(--radius); padding: 24px; color: #fff;
+  background: radial-gradient(120% 140% at 100% 0%, var(--accent-2) 0%, transparent 55%), linear-gradient(135deg, #2141e6, #3355ff); box-shadow: var(--shadow); }
+:root[data-theme="dark"] .headline { background: radial-gradient(120% 140% at 100% 0%, #5b3bd6 0%, transparent 55%), linear-gradient(135deg, #1e33b8, #3148dd); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .headline { background: radial-gradient(120% 140% at 100% 0%, #5b3bd6 0%, transparent 55%), linear-gradient(135deg, #1e33b8, #3148dd); } }
+.headline::after { content: ""; position: absolute; inset: 0; background-image: radial-gradient(rgba(255,255,255,.14) 1px, transparent 1px); background-size: 14px 14px; mask-image: linear-gradient(to left, #000, transparent 70%); pointer-events: none; }
+.hl-label { font-size: 13px; font-weight: 500; opacity: .8; }
+.hl-value { font-family: var(--mono); font-size: clamp(36px, 5vw, 52px); font-weight: 600; letter-spacing: -.04em; line-height: 1.1; margin: 6px 0 4px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.hl-sub { font-size: 14px; opacity: .85; }
+
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
+.stats.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (max-width: 560px) {
+  .stats, .stats.four { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .stats .stat:last-child:nth-child(odd) { grid-column: 1 / -1; }
+}
+.stat { background: var(--surface); padding: 14px 16px; min-width: 0; }
+.stat-l { font-size: 12px; color: var(--muted); }
+.stat-v { font-family: var(--mono); font-size: 19px; font-weight: 600; letter-spacing: -.03em; margin-top: 4px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.pos { color: var(--pos); }
+.neg { color: var(--neg); }
+
+.rows { display: grid; }
+.r { display: flex; align-items: baseline; gap: 10px; padding: 9px 0; font-size: 14px; }
+.r + .r { border-top: 1px solid var(--line); }
+.r .k { color: var(--ink-2); }
+.r .dots { flex: 1; border-bottom: 1px dotted var(--line-2); transform: translateY(-4px); min-width: 12px; }
+.r .v { font-family: var(--mono); font-weight: 500; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.r.total .k { color: var(--ink); font-weight: 600; }
+.r.total .v { color: var(--accent); font-weight: 600; }
+
+details.math { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 12px; }
+details.math summary { cursor: pointer; font-size: 13px; font-weight: 500; color: var(--ink-2); list-style: none; display: flex; align-items: center; gap: 6px; }
+details.math summary::-webkit-details-marker { display: none; }
+details.math summary::before { content: "+"; font-family: var(--mono); width: 18px; height: 18px; display: grid; place-items: center; border: 1px solid var(--line-2); border-radius: 5px; font-size: 12px; }
+details.math[open] summary::before { content: "−"; }
+.math-body { font-family: var(--mono); font-size: 12px; line-height: 1.9; color: var(--ink-2); background: var(--surface-2); border-radius: 12px; padding: 12px 14px; margin-top: 10px; overflow-x: auto; }
+.math-body b { color: var(--ink); font-weight: 600; }
+
+/* ---------- Charts ---------- */
+.chart-wrap { position: relative; }
+.chart { width: 100%; height: auto; display: block; overflow: visible; }
+.chart .grid-line { stroke: var(--line); stroke-width: 1; }
+.chart .axis-t { fill: var(--muted); font-family: var(--mono); font-size: 11px; }
+.chart .area { fill: url(#gArea); }
+.chart .line { fill: none; stroke: var(--accent); stroke-width: 2.25; stroke-linejoin: round; stroke-linecap: round; }
+.chart .target { stroke: var(--pos); stroke-dasharray: 4 4; stroke-width: 1.25; }
+.chart .target-t { fill: var(--pos); font-family: var(--mono); font-size: 11px; font-weight: 600; }
+.chart .guide { stroke: var(--ink-2); stroke-width: 1; stroke-dasharray: 2 3; }
+.chart .dot { fill: var(--surface); stroke: var(--accent); stroke-width: 2.5; }
+.chart .ms-dot { fill: var(--accent); }
+.chart .empty-t { fill: var(--muted); font-size: 14px; font-family: var(--sans); }
+.tip { position: absolute; pointer-events: none; background: var(--ink); color: var(--bg); padding: 7px 10px; border-radius: 9px; font-size: 12px; line-height: 1.45; white-space: nowrap; transform: translate(-50%, calc(-100% - 12px)); opacity: 0; transition: opacity .12s; font-family: var(--mono); }
+.tip.on { opacity: 1; }
+
+.ms-list { display: grid; gap: 10px; }
+.ms { display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; align-items: center; font-size: 13px; }
+.ms-bar { grid-column: 1 / -1; height: 4px; border-radius: 999px; background: var(--line); overflow: hidden; }
+.ms-bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent-2)); border-radius: inherit; }
+.ms-k { color: var(--ink-2); }
+.ms-k b { font-family: var(--mono); color: var(--ink); font-weight: 500; }
+.ms-v { font-family: var(--mono); color: var(--muted); }
+
+/* ---------- Fee table ---------- */
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th { text-align: left; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); padding: 0 12px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+td { padding: 14px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+tr:last-child td { border-bottom: 0; }
+td.n, th.n { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+td .sub { display: block; font-size: 12px; color: var(--muted); margin-top: 2px; }
+.tag { display: inline-block; white-space: nowrap; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); margin-left: 6px; vertical-align: 1px; }
+
+@media (max-width: 560px) {
+  thead { display: none; }
+  tbody tr { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; padding: 14px 0; border-bottom: 1px solid var(--line); }
+  tbody tr:last-child { border-bottom: 0; }
+  td { padding: 0; border: 0; }
+  td:first-child { grid-column: 1 / -1; font-weight: 600; }
+  td.n { text-align: left; }
+  td.n::before { content: attr(data-l); display: block; font-family: var(--sans); font-size: 11px; color: var(--muted); margin-bottom: 2px; }
+}
+.field-head select { flex: 0 1 auto; min-width: 0; }
+
+.note { font-size: 13px; color: var(--muted); margin: 14px 0 0; line-height: 1.6; }
+
+footer { border-top: 1px solid var(--line); margin-top: 40px; padding: 28px 0 48px; color: var(--muted); font-size: 13px; }
+footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-in">
+    <a class="brand" href="#top">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="9" fill="#3355ff"/><path d="M8 22l5.5-6 4.5 3.5L24 11" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Profit Calculator
+    </a>
+    <div class="nav-links">
+      <a href="#compound">Compound</a>
+      <a href="#rebate">Maker rebate</a>
+      <a href="#yield">Yield</a>
+      <a href="#fees">Fee schedule</a>
+    </div>
+    <button class="icon-btn" id="themeBtn" type="button" aria-label="Toggle color theme">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+    </button>
+  </div>
+</nav>
+
+<main class="wrap" id="top">
+  <header class="hero">
+    <span class="eyebrow">Polymarket tools</span>
+    <h1>Know your numbers <span>before you trade.</span></h1>
+    <p class="lede">Three calculators for prediction-market traders: how long compounding takes, what a maker order earns in rebates, and the annualized yield of holding a near-certain outcome to resolution.</p>
+    <div class="chips">
+      <span class="chip">Fee schedule <b>updated Jul 10, 2026</b></span>
+      <span class="chip">Runs <b>entirely in your browser</b></span>
+      <span class="chip">URL <b>saves your inputs</b></span>
+    </div>
+  </header>
+
+  <!-- ================= Compound ================= -->
+  <section class="calc" id="compound">
+    <div class="sec-head">
+      <span class="sec-num">01</span><h2>Compound growth</h2>
+      <p class="sec-desc">How many days of a steady daily return it takes to turn your starting capital into a target amount.</p>
+    </div>
+    <div class="grid">
+      <div class="card">
+        <p class="card-title">Inputs</p>
+        <div class="field">
+          <div class="field-head"><label for="principal">Initial capital</label>
+            <div class="stepper"><button type="button" data-t="principal" data-d="-1" aria-label="Decrease initial capital">−</button><input id="principalOut" inputmode="decimal" aria-label="Initial capital"><button type="button" data-t="principal" data-d="1" aria-label="Increase initial capital">+</button></div></div>
+          <input id="principal" type="range" min="1000" max="100000" step="100" value="13200">
+          <div class="range-ends"><span>$1k</span><span>$100k+</span></div>
+        </div>
+        <div class="field">
+          <div class="field-head"><label for="rate">Daily return</label>
+            <div class="stepper"><button type="button" data-t="rate" data-d="-1" aria-label="Decrease daily return">−</button><input id="rateOut" inputmode="decimal" aria-label="Daily return"><button type="button" data-t="rate" data-d="1" aria-label="Increase daily return">+</button></div></div>
+          <input id="rate" type="range" min="0.01" max="2" step="0.01" value="0.3">
+          <div class="range-ends"><span>0.01%</span><span>2%+</span></div>
+        </div>
+        <div class="field">
+          <div class="field-head"><label for="target">Target amount</label>
+            <div class="stepper"><button type="button" data-t="target" data-d="-1" aria-label="Decrease target amount">−</button><input id="targetOut" inputmode="decimal" aria-label="Target amount"><button type="button" data-t="target" data-d="1" aria-label="Increase target amount">+</button></div></div>
+          <input id="target" type="range" min="10000" max="1000000" step="1000" value="144718">
+          <div class="range-ends"><span>$10k</span><span>$1M+</span></div>
+        </div>
+        <p class="note">Tip: type values directly — <span class="num-font">50k</span>, <span class="num-font">1.5m</span> and <span class="num-font">$13,200</span> all work, and typed values can go beyond the slider range.</p>
+      </div>
+
+      <div class="stack">
+        <div class="headline">
+          <div class="hl-label">Days to reach target</div>
+          <div class="hl-value" id="days"></div>
+          <div class="hl-sub" id="yearsMonths"></div>
+        </div>
+        <div class="stats">
+          <div class="stat"><div class="stat-l">Daily profit today</div><div class="stat-v" id="dailyEarn"></div></div>
+          <div class="stat"><div class="stat-l">Total profit</div><div class="stat-v pos" id="totalProfit"></div></div>
+          <div class="stat"><div class="stat-l">Growth multiple</div><div class="stat-v" id="multiple"></div></div>
+        </div>
+        <div class="card">
+          <p class="card-title">Growth curve</p>
+          <div class="chart-wrap" id="growthWrap">
+            <svg class="chart" id="growthChart" role="img" aria-label="Capital growth over time"></svg>
+            <div class="tip" id="growthTip"></div>
+          </div>
+        </div>
+        <div class="card">
+          <p class="card-title">Milestones</p>
+          <div class="ms-list" id="milestones"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= Maker rebate ================= -->
+  <section class="calc" id="rebate">
+    <div class="sec-head">
+      <span class="sec-num">02</span><h2>Maker rebate</h2>
+      <p class="sec-desc">Makers pay no fee and earn back a share of the taker fees collected in the same market, split by each maker's fee-equivalent volume.</p>
+    </div>
+    <div class="cats" id="catTabs" role="group" aria-label="Fee category"></div>
+    <div class="grid">
+      <div class="card">
+        <p class="card-title">Your fill</p>
+        <div class="field">
+          <div class="field-head"><label for="mmPrice">Fill price</label>
+            <div class="stepper"><button type="button" data-t="mmPrice" data-d="-1" aria-label="Decrease fill price">−</button><input id="mmPriceOut" inputmode="decimal" aria-label="Fill price in cents"><button type="button" data-t="mmPrice" data-d="1" aria-label="Increase fill price">+</button></div></div>
+          <input id="mmPrice" type="range" min="0.1" max="99.9" step="0.1" value="50">
+          <div class="range-ends"><span>0.1¢</span><span>99.9¢</span></div>
+        </div>
+        <div class="field">
+          <div class="field-head"><label for="mmShares">Shares filled</label>
+            <div class="stepper"><button type="button" data-t="mmShares" data-d="-1" aria-label="Decrease shares filled">−</button><input id="mmSharesOut" inputmode="decimal" aria-label="Shares filled"><button type="button" data-t="mmShares" data-d="1" aria-label="Increase shares filled">+</button></div></div>
+          <input id="mmShares" type="range" min="100" max="10000" step="100" value="1000">
+          <div class="range-ends"><span>100</span><span>10k+</span></div>
+        </div>
+        <div class="field">
+          <div class="field-head"><label for="mmSharePct">Your share of maker volume</label>
+            <div class="stepper"><button type="button" data-t="mmSharePct" data-d="-1" aria-label="Decrease market share">−</button><input id="mmSharePctOut" inputmode="decimal" aria-label="Your share of maker volume in percent"><button type="button" data-t="mmSharePct" data-d="1" aria-label="Increase market share">+</button></div></div>
+          <input id="mmSharePct" type="range" min="1" max="100" step="1" value="100">
+          <div class="range-ends"><span>1%</span><span>100%</span></div>
+        </div>
+        <div class="field">
+          <div class="lbl" style="margin-bottom:10px">Fee weight across prices</div>
+          <svg class="chart" id="feeCurve" role="img" aria-label="Fee weight p times one minus p"></svg>
+        </div>
+      </div>
+
+      <div class="stack">
+        <div class="headline">
+          <div class="hl-label">Estimated rebate for this fill</div>
+          <div class="hl-value" id="mmRebate"></div>
+          <div class="hl-sub" id="mmHeadSub"></div>
+        </div>
+        <div class="card">
+          <p class="card-title">Breakdown</p>
+          <div class="rows">
+            <div class="r"><span class="k">Trade value</span><span class="dots"></span><span class="v" id="mmTradeValue"></span></div>
+            <div class="r"><span class="k">Profit if it settles at 100¢</span><span class="dots"></span><span class="v" id="mmSettlementProfit"></span></div>
+            <div class="r"><span class="k">Fee weight p × (1 − p)</span><span class="dots"></span><span class="v" id="mmWeight"></span></div>
+            <div class="r"><span class="k">Taker fee on this fill</span><span class="dots"></span><span class="v" id="mmTakerFee"></span></div>
+            <div class="r"><span class="k">… as % of trade value</span><span class="dots"></span><span class="v" id="mmTakerFeePct"></span></div>
+            <div class="r"><span class="k">… as % of settlement profit</span><span class="dots"></span><span class="v" id="mmTakerFeeProfitPct"></span></div>
+            <div class="r"><span class="k">Rebate pool from this fill</span><span class="dots"></span><span class="v" id="mmPool"></span></div>
+            <div class="r total"><span class="k">Your estimated rebate</span><span class="dots"></span><span class="v" id="mmRebate2"></span></div>
+          </div>
+          <details class="math"><summary>Show the math</summary><div class="math-body" id="mmFormula"></div></details>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= Yield ================= -->
+  <section class="calc" id="yield">
+    <div class="sec-head">
+      <span class="sec-num">03</span><h2>Yield to resolution</h2>
+      <p class="sec-desc">Buy a share below $1 and hold it until it resolves: the total and annualized return, optionally including the taker fee.</p>
+    </div>
+    <div class="grid">
+      <div class="card">
+        <p class="card-title">Position</p>
+        <div class="field">
+          <div class="field-head"><label for="buyPrice">Buy price</label>
+            <div class="stepper"><button type="button" data-t="buyPrice" data-d="-1" aria-label="Decrease buy price">−</button><input id="buyPriceOut" inputmode="decimal" aria-label="Buy price in cents"><button type="button" data-t="buyPrice" data-d="1" aria-label="Increase buy price">+</button></div></div>
+          <input id="buyPrice" type="range" min="80" max="99.9" step="0.1" value="95">
+          <div class="range-ends"><span>80¢</span><span>99.9¢</span></div>
+        </div>
+        <div class="field">
+          <div class="field-head"><label for="maturityDate">Resolution date</label><input id="maturityDate" type="date"></div>
+          <div class="pills" id="dateTabs"></div>
+        </div>
+        <div class="field">
+          <div class="field-head"><span class="lbl">Order type</span>
+            <div class="seg" id="orderSeg"><button type="button" data-v="maker">Maker · no fee</button><button type="button" data-v="taker">Taker</button></div></div>
+          <div class="field-head" id="yCatRow" style="margin-bottom:0"><label for="yCat">Category</label><select id="yCat"></select></div>
+        </div>
+      </div>
+
+      <div class="stack">
+        <div class="headline">
+          <div class="hl-label">Annualized return</div>
+          <div class="hl-value" id="annualReturn"></div>
+          <div class="hl-sub" id="annualNote"></div>
+        </div>
+        <div class="stats four">
+          <div class="stat"><div class="stat-l">Holding days</div><div class="stat-v" id="holdDays"></div></div>
+          <div class="stat"><div class="stat-l">Total return</div><div class="stat-v pos" id="totalReturn"></div></div>
+          <div class="stat"><div class="stat-l">Profit per $1,000</div><div class="stat-v" id="per1000"></div></div>
+          <div class="stat"><div class="stat-l">Fee per share</div><div class="stat-v" id="feePerShare"></div></div>
+        </div>
+        <p class="note">Assumes the share resolves to $1. Annualized figures for short holding periods are extremely sensitive and rarely repeatable.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= Fee schedule ================= -->
+  <section class="calc" id="fees">
+    <div class="sec-head">
+      <span class="sec-num">04</span><h2>Fee schedule</h2>
+      <p class="sec-desc">Taker fee = shares × fee rate × p × (1 − p). Fees peak at 50¢ and shrink toward 0¢ and 100¢. Makers are never charged.</p>
+    </div>
+    <div class="card">
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Categories</th><th class="n">Fee rate</th><th class="n">Max fee / 100 shares</th><th class="n">Maker rebate</th></tr></thead>
+          <tbody id="feeTable"></tbody>
+        </table>
+      </div>
+      <p class="note">Source: <a href="https://docs.polymarket.com/polymarket-learn/trading/fees" target="_blank" rel="noopener">Polymarket fee docs</a> and <a href="https://docs.polymarket.com/developers/market-makers/maker-rebates-program" target="_blank" rel="noopener">Maker Rebates Program</a>. Last change: Jul 10, 2026 — Sports fee rate 0.03 → 0.05, Sports maker rebate 25% → 15%. Rebates are paid daily once at least $1 has accrued.</p>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>Independent tool — not affiliated with Polymarket. Estimates only, not financial advice.</span>
+    <span>Fee data as of Jul 10, 2026</span>
+  </div>
+</footer>
+
+<script>
+const $ = id => document.getElementById(id);
+const fmt = (n, d = 0) => Number(n).toLocaleString('en-US', { maximumFractionDigits: d });
+const compact = n => '$' + Number(n).toLocaleString('en-US', { notation: 'compact', maximumFractionDigits: 1 });
+const money = n => '$' + Number(n).toLocaleString('en-US', {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: Math.abs(n) > 0 && Math.abs(n) < 1 ? 4 : 2
+});
+const pct = (n, d = 2) => (n * 100).toFixed(d) + '%';
+const longDate = d => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+const SVGNS = 'http://www.w3.org/2000/svg';
+
+// Local-time YYYY-MM-DD (toISOString would shift the date across timezones)
+const ymd = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const today = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
+const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+
+// Calendar difference between two dates as [years, months, days]
+function diffYMD(a, b) {
+  let y = b.getFullYear() - a.getFullYear(), m = b.getMonth() - a.getMonth(), d = b.getDate() - a.getDate();
+  if (d < 0) { m--; d += new Date(b.getFullYear(), b.getMonth(), 0).getDate(); }
+  if (m < 0) { y--; m += 12; }
+  return [y, m, d];
+}
+
+// Parses "13,200", "$1.5k", "2m", "95¢", "0.3%"
+function parseNum(s) {
+  s = String(s).trim().toLowerCase().replace(/[$,¢%\s]/g, '');
+  const mult = s.endsWith('k') ? 1e3 : s.endsWith('m') ? 1e6 : 1;
+  if (mult !== 1) s = s.slice(0, -1);
+  return s === '' ? NaN : Number(s) * mult;
+}
+
+/* ---------- Fee schedule (Polymarket docs, last changed Jul 10, 2026) ---------- */
+const MM = {
+  crypto: { label: 'Crypto', fee: .07, rebate: .20 },
+  sports: { label: 'Sports', fee: .05, rebate: .15 },
+  rate04: { label: 'Finance · Politics · Tech · Mentions', short: 'Finance & Politics', fee: .04, rebate: .25 },
+  rate05: { label: 'Economics · Culture · Weather · Other', short: 'Economics & Culture', fee: .05, rebate: .25 },
+  geo:    { label: 'Geopolitics', fee: 0, rebate: 0 }
+};
+
+/* ---------- Numeric fields (slider + editable value + −/+ buttons) ----------
+   Slider min/max is the convenient drag range; min/max here are the hard limits for typed values. */
+const FIELDS = {
+  principal:  { min: 1,    max: 1e9,  dec: 2, show: v => '$' + fmt(v, 2),    calc: () => calcCompound() },
+  rate:       { min: 0.01, max: 100,  dec: 3, show: v => fmt(v, 3) + '%',    calc: () => calcCompound() },
+  target:     { min: 1,    max: 1e12, dec: 2, show: v => '$' + fmt(v, 2),    calc: () => calcCompound() },
+  mmPrice:    { min: 0.1,  max: 99.9, dec: 1, show: v => v.toFixed(1) + '¢', calc: () => calcMM() },
+  mmShares:   { min: 1,    max: 1e9,  dec: 0, show: v => fmt(v),             calc: () => calcMM() },
+  mmSharePct: { min: 0,    max: 100,  dec: 1, show: v => fmt(v, 1) + '%',    calc: () => calcMM() },
+  buyPrice:   { min: 0.1,  max: 99.9, dec: 1, show: v => v.toFixed(1) + '¢', calc: () => calcAnnual() }
+};
+const val = {};
+
+function setVal(id, v, fromSlider) {
+  const f = FIELDS[id], slider = $(id);
+  v = +Math.min(f.max, Math.max(f.min, v)).toFixed(f.dec);
+  val[id] = v;
+  if (!fromSlider) slider.value = v;
+  const lo = +slider.min, hi = +slider.max;
+  slider.style.setProperty('--pct', (Math.min(hi, Math.max(lo, v)) - lo) / (hi - lo) * 100 + '%');
+  $(id + 'Out').value = f.show(v);
+}
+
+for (const id of Object.keys(FIELDS)) {
+  const slider = $(id), out = $(id + 'Out');
+  setVal(id, +slider.getAttribute('value')); // attribute, not .value: the slider snaps to its step
+  slider.addEventListener('input', () => { setVal(id, +slider.value, true); FIELDS[id].calc(); });
+  const commit = () => {
+    const v = parseNum(out.value);
+    if (isFinite(v)) setVal(id, v); else out.value = FIELDS[id].show(val[id]);
+    FIELDS[id].calc();
+  };
+  out.addEventListener('change', commit);
+  out.addEventListener('keydown', e => {
+    if (e.key === 'Enter') out.blur();
+    if (e.key === 'Escape') { out.value = FIELDS[id].show(val[id]); out.blur(); }
+  });
+  out.addEventListener('focus', () => out.select());
+}
+
+document.querySelectorAll('.stepper button').forEach(b => b.addEventListener('click', () => {
+  const id = b.dataset.t;
+  setVal(id, val[id] + (+$(id).step || 1) * +b.dataset.d);
+  FIELDS[id].calc();
+}));
+
+function svg(tag, attrs, text) {
+  const el = document.createElementNS(SVGNS, tag);
+  for (const k in attrs) el.setAttribute(k, attrs[k]);
+  if (text != null) el.textContent = text;
+  return el;
+}
+
+const chartWidth = (el, fallback) => Math.max(260, Math.round(el.parentElement.clientWidth) || fallback);
+
+/* ---------- 01 Compound growth ---------- */
+let growth = null; // data for the hover tooltip
+
+function calcCompound() {
+  const P = val.principal, r = val.rate / 100, T = val.target;
+  $('dailyEarn').textContent = money(P * r);
+  $('multiple').textContent = (T / P).toFixed(2) + '×';
+  const daysTo = x => x <= P ? 0 : Math.ceil(Math.log(x / P) / Math.log(1 + r));
+
+  if (T <= P) {
+    $('days').textContent = '0';
+    $('yearsMonths').textContent = 'Your capital already meets the target';
+    $('totalProfit').textContent = '—';
+    growth = null;
+    drawGrowth(P, r, T, 0);
+  } else {
+    const d = daysTo(T), end = addDays(today(), d);
+    const [y, m, rd] = diffYMD(today(), end);
+    $('days').textContent = fmt(d);
+    $('yearsMonths').textContent = `${y ? y + ' yr ' : ''}${m ? m + ' mo ' : ''}${rd} d · reached ${longDate(end)}`;
+    $('totalProfit').textContent = '+$' + fmt(T - P);
+    drawGrowth(P, r, T, d);
+  }
+
+  $('milestones').innerHTML = [.25, .5, .75, 1].map(f => {
+    const x = T * f, d = daysTo(x), prog = Math.min(1, P / x);
+    const right = d ? `${fmt(d)} days · ${longDate(addDays(today(), d))}` : '<span class="pos">Reached</span>';
+    return `<div class="ms"><span class="ms-k">${f * 100}% · <b>$${fmt(x)}</b></span><span class="ms-v">${right}</span><div class="ms-bar"><i style="width:${prog * 100}%"></i></div></div>`;
+  }).join('');
+  scheduleURL();
+}
+
+function drawGrowth(P, r, T, d) {
+  // Drawn at the container's real pixel width so axis text stays readable on phones
+  const el = $('growthChart'), W = chartWidth(el, 640), H = W < 480 ? 220 : 260, L = 52, R = 14, Tp = 16, B = 30;
+  el.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  el.replaceChildren();
+  const defs = svg('defs', {}), g = svg('linearGradient', { id: 'gArea', x1: 0, y1: 0, x2: 0, y2: 1 });
+  g.append(svg('stop', { offset: '0%', 'stop-color': 'var(--accent)', 'stop-opacity': .28 }), svg('stop', { offset: '100%', 'stop-color': 'var(--accent)', 'stop-opacity': 0 }));
+  defs.append(g); el.append(defs);
+
+  const top = Math.max(T, P) * 1.08;
+  const x = day => L + (W - L - R) * (d ? day / d : 0);
+  const y = v => Tp + (H - Tp - B) * (1 - v / top);
+  for (let i = 0; i <= 4; i++) {
+    const v = top * i / 4, yy = y(v);
+    el.append(svg('line', { class: 'grid-line', x1: L, x2: W - R, y1: yy, y2: yy }));
+    el.append(svg('text', { class: 'axis-t', x: L - 10, y: yy + 4, 'text-anchor': 'end' }, compact(v)));
+  }
+  if (!d) {
+    el.append(svg('text', { class: 'empty-t', x: (W + L) / 2, y: H / 2, 'text-anchor': 'middle' }, 'Target already reached'));
+    return;
+  }
+
+  const N = 90, pts = [];
+  for (let i = 0; i <= N; i++) {
+    const day = d * i / N;
+    pts.push([day, Math.min(T, P * Math.pow(1 + r, day))]);
+  }
+  const line = pts.map(([dd, v], i) => `${i ? 'L' : 'M'}${x(dd).toFixed(1)},${y(v).toFixed(1)}`).join('');
+  el.append(svg('path', { class: 'area', d: `${line}L${x(d)},${y(0)}L${x(0)},${y(0)}Z` }));
+  el.append(svg('line', { class: 'target', x1: L, x2: W - R, y1: y(T), y2: y(T) }));
+  el.append(svg('text', { class: 'target-t', x: L + 6, y: y(T) - 7 }, 'Target ' + compact(T)));
+  el.append(svg('path', { class: 'line', d: line }));
+  for (const f of [.25, .5, .75]) {
+    if (T * f > P) {
+      const dd = Math.log(T * f / P) / Math.log(1 + r);
+      el.append(svg('circle', { class: 'ms-dot', cx: x(dd), cy: y(T * f), r: 3.5 }));
+    }
+  }
+  [[0, 'Today', 'start'], [d / 2, 'Day ' + fmt(d / 2), 'middle'], [d, 'Day ' + fmt(d), 'end']].forEach(([dd, t, a]) =>
+    el.append(svg('text', { class: 'axis-t', x: x(dd), y: H - 8, 'text-anchor': a }, t)));
+
+  const guide = svg('line', { class: 'guide', y1: Tp, y2: H - B, opacity: 0 });
+  const dot = svg('circle', { class: 'dot', r: 5, opacity: 0 });
+  el.append(guide, dot);
+  growth = { P, r, T, d, x, y, L, R, W, H, guide, dot };
+}
+
+(function bindGrowthHover() {
+  const el = $('growthChart'), tip = $('growthTip');
+  const hide = () => { tip.classList.remove('on'); if (growth) { growth.guide.setAttribute('opacity', 0); growth.dot.setAttribute('opacity', 0); } };
+  el.addEventListener('pointermove', e => {
+    if (!growth) return;
+    const { P, r, T, d, x, y, L, R, W, H, guide, dot } = growth;
+    const box = el.getBoundingClientRect(), sx = (e.clientX - box.left) / box.width * W;
+    const day = Math.round(Math.min(1, Math.max(0, (sx - L) / (W - L - R))) * d);
+    const v = Math.min(T, P * Math.pow(1 + r, day));
+    guide.setAttribute('x1', x(day)); guide.setAttribute('x2', x(day)); guide.setAttribute('opacity', 1);
+    dot.setAttribute('cx', x(day)); dot.setAttribute('cy', y(v)); dot.setAttribute('opacity', 1);
+    tip.innerHTML = `Day ${fmt(day)} · ${longDate(addDays(today(), day))}<br><b>$${fmt(v)}</b>`;
+    tip.style.left = x(day) / W * box.width + 'px';
+    tip.style.top = y(v) / H * box.height + 'px';
+    tip.classList.add('on');
+  });
+  el.addEventListener('pointerleave', hide);
+})();
+
+/* ---------- 02 Maker rebate ---------- */
+let cat = 'rate04';
+
+function renderCatTabs() {
+  $('catTabs').innerHTML = Object.entries(MM).map(([k, v]) =>
+    `<button type="button" class="cat ${k === cat ? 'active' : ''}" aria-pressed="${k === cat}" data-cat="${k}">
+      <span class="cat-name">${v.short || v.label}</span>
+      <span class="cat-meta">${v.fee ? `${v.fee} · ${v.rebate * 100}% back` : 'Fee-free'}</span></button>`).join('');
+  $('catTabs').querySelectorAll('.cat').forEach(b => b.addEventListener('click', () => { cat = b.dataset.cat; renderCatTabs(); calcMM(); }));
+}
+
+function calcMM() {
+  const p = val.mmPrice / 100, C = val.mmShares, share = val.mmSharePct / 100, x = MM[cat];
+  const weight = p * (1 - p);
+  const tradeValue = C * p, settlementProfit = C * (1 - p);
+  const fee = C * x.fee * weight;
+  const feePct = tradeValue ? fee / tradeValue : 0, feeProfitPct = settlementProfit ? fee / settlementProfit : 0;
+  const pool = fee * x.rebate, est = pool * share;
+  const dash = v => x.fee ? v : '—';
+
+  $('mmRebate').textContent = x.fee ? money(est) : '$0.00';
+  $('mmRebate2').textContent = dash(money(est));
+  $('mmHeadSub').textContent = x.fee
+    ? `${x.label} · fee rate ${x.fee} · ${x.rebate * 100}% of taker fees returned to makers`
+    : 'Geopolitics markets are fee-free, so there is no rebate pool';
+  $('mmTradeValue').textContent = money(tradeValue);
+  $('mmSettlementProfit').textContent = money(settlementProfit);
+  $('mmWeight').textContent = weight.toFixed(4);
+  $('mmTakerFee').textContent = dash(money(fee));
+  $('mmTakerFeePct').textContent = dash(pct(feePct));
+  $('mmTakerFeeProfitPct').textContent = dash(pct(feeProfitPct));
+  $('mmPool').textContent = dash(money(pool));
+  $('mmFormula').innerHTML = x.fee
+    ? `trade value     = ${fmt(C)} × ${p.toFixed(4)} = <b>${money(tradeValue)}</b><br>` +
+      `taker fee       = ${fmt(C)} × ${x.fee} × ${weight.toFixed(4)} = <b>${money(fee)}</b><br>` +
+      `fee / value     = ${x.fee} × (1 − p) = <b>${pct(feePct)}</b><br>` +
+      `fee / profit    = ${x.fee} × p = <b>${pct(feeProfitPct)}</b><br>` +
+      `rebate pool     = taker fee × ${x.rebate * 100}% = <b>${money(pool)}</b><br>` +
+      `your rebate     = pool × ${fmt(share * 100, 1)}% = <b>${money(est)}</b>`
+    : 'Geopolitics / world-event markets charge no taker fee, so the maker rebate is 0.';
+  $('mmFormula').style.whiteSpace = 'pre';
+  drawFeeCurve(p);
+  scheduleURL();
+}
+
+function drawFeeCurve(p) {
+  const el = $('feeCurve'), W = chartWidth(el, 320), H = 130, L = 8, R = 8, Tp = 22, B = 22;
+  el.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  el.replaceChildren();
+  const x = q => L + (W - L - R) * q, y = w => Tp + (H - Tp - B) * (1 - w / .25);
+  const defs = svg('defs', {}), g = svg('linearGradient', { id: 'gFee', x1: 0, y1: 0, x2: 0, y2: 1 });
+  g.append(svg('stop', { offset: '0%', 'stop-color': 'var(--accent)', 'stop-opacity': .22 }), svg('stop', { offset: '100%', 'stop-color': 'var(--accent)', 'stop-opacity': 0 }));
+  defs.append(g); el.append(defs);
+  let d = '';
+  for (let i = 0; i <= 100; i++) { const q = i / 100; d += `${i ? 'L' : 'M'}${x(q).toFixed(1)},${y(q * (1 - q)).toFixed(1)}`; }
+  el.append(svg('line', { class: 'grid-line', x1: L, x2: W - R, y1: y(0), y2: y(0) }));
+  el.append(svg('path', { d: `${d}L${x(1)},${y(0)}L${x(0)},${y(0)}Z`, fill: 'url(#gFee)' }));
+  el.append(svg('path', { class: 'line', d }));
+  const w = p * (1 - p);
+  el.append(svg('line', { class: 'guide', x1: x(p), x2: x(p), y1: y(w), y2: y(0) }));
+  el.append(svg('circle', { class: 'dot', cx: x(p), cy: y(w), r: 5 }));
+  const anchor = p < .2 ? 'start' : p > .8 ? 'end' : 'middle';
+  el.append(svg('text', { class: 'axis-t', x: x(p), y: y(w) - 11, 'text-anchor': anchor }, `${(p * 100).toFixed(1)}¢ → ${(w / .25 * 100).toFixed(0)}% of peak`));
+  [[0, '0¢', 'start'], [.5, '50¢', 'middle'], [1, '100¢', 'end']].forEach(([q, t, a]) =>
+    el.append(svg('text', { class: 'axis-t', x: x(q), y: H - 4, 'text-anchor': a }, t)));
+}
+
+/* ---------- 03 Yield ---------- */
+let order = 'maker', yCat = 'rate04';
+
+function dateOptions() {
+  const now = today(), y = now.getFullYear(), m = now.getMonth();
+  const list = [
+    ['End of month', new Date(y, m + 1, 0)],
+    ['Next month', new Date(y, m + 2, 0)],
+    ['End of Mar', new Date(y, 3, 0)],
+    ['End of Jun', new Date(y, 6, 0)],
+    ['End of Sep', new Date(y, 9, 0)],
+    ['End of year', new Date(y, 12, 0)],
+    [`Mar ${y + 1}`, new Date(y + 1, 3, 0)],
+    [`Jun ${y + 1}`, new Date(y + 1, 6, 0)],
+    [`Dec ${y + 1}`, new Date(y + 1, 12, 0)]
+  ];
+  const seen = new Set();
+  return list.filter(([, d]) => d > now).map(([l, d]) => [l, ymd(d)]).filter(([, s]) => !seen.has(s) && seen.add(s));
+}
+
+function renderDateTabs() {
+  const cur = $('maturityDate').value;
+  $('dateTabs').innerHTML = dateOptions().map(([l, s]) =>
+    `<button type="button" class="pill ${s === cur ? 'active' : ''}" aria-pressed="${s === cur}" data-date="${s}">${l}</button>`).join('');
+  $('dateTabs').querySelectorAll('.pill').forEach(b => b.addEventListener('click', () => { $('maturityDate').value = b.dataset.date; calcAnnual(); }));
+}
+
+function defaultMaturity() {
+  const now = today(), endOfYear = new Date(now.getFullYear(), 12, 0);
+  return ymd(endOfYear > now ? endOfYear : new Date(now.getFullYear() + 1, 12, 0));
+}
+
+function renderOrder() {
+  $('orderSeg').querySelectorAll('button').forEach(b => {
+    b.classList.toggle('active', b.dataset.v === order);
+    b.setAttribute('aria-pressed', b.dataset.v === order);
+  });
+  $('yCatRow').style.display = order === 'taker' ? '' : 'none';
+  $('yCat').value = yCat;
+}
+
+function calcAnnual() {
+  renderDateTabs();
+  renderOrder();
+  scheduleURL();
+  const p = val.buyPrice / 100, t = new Date($('maturityDate').value + 'T00:00:00');
+  const d = Math.round((t - today()) / 86400000);
+  const feeRate = order === 'taker' ? MM[yCat].fee : 0;
+  const feeShare = feeRate * p * (1 - p);
+  const cost = p + feeShare;
+  $('feePerShare').textContent = feeShare ? (feeShare * 100).toFixed(3) + '¢' : '0¢';
+
+  if (!isFinite(d) || d <= 0) {
+    $('holdDays').textContent = isFinite(d) ? 'Resolved' : '—';
+    ['totalReturn', 'per1000', 'annualReturn'].forEach(id => $(id).textContent = '—');
+    $('annualNote').textContent = 'Pick a resolution date in the future';
+    return;
+  }
+  const total = (1 - cost) / cost, ann = Math.pow(1 + total, 365 / d) - 1;
+  $('holdDays').textContent = fmt(d);
+  $('totalReturn').textContent = pct(total);
+  $('totalReturn').className = 'stat-v ' + (total >= 0 ? 'pos' : 'neg');
+  $('per1000').textContent = (total >= 0 ? '+' : '−') + '$' + fmt(Math.abs(total) * 1000, 2);
+  if (!isFinite(ann) || ann > 100) {
+    $('annualReturn').textContent = '> 10,000%';
+    $('annualNote').textContent = 'Very short holding period — the annualized figure is not meaningful';
+  } else {
+    $('annualReturn').textContent = pct(ann);
+    $('annualNote').textContent = `Compounded equivalent · buy at ${(p * 100).toFixed(1)}¢${feeShare ? ` + ${(feeShare * 100).toFixed(3)}¢ fee` : ''}, resolves ${longDate(t)}`;
+  }
+}
+
+$('yCat').innerHTML = Object.entries(MM).map(([k, v]) => `<option value="${k}">${v.short || v.label} · ${v.fee || 'no fee'}</option>`).join('');
+$('yCat').addEventListener('change', () => { yCat = $('yCat').value; calcAnnual(); });
+$('orderSeg').querySelectorAll('button').forEach(b => b.addEventListener('click', () => { order = b.dataset.v; calcAnnual(); }));
+$('maturityDate').addEventListener('input', calcAnnual);
+
+/* ---------- 04 Fee table ---------- */
+$('feeTable').innerHTML = Object.entries(MM).map(([k, v]) => `<tr>
+  <td>${v.label}${k === 'sports' ? '<span class="tag">Changed Jul 10</span>' : ''}</td>
+  <td class="n" data-l="Fee rate">${v.fee || '0'}</td>
+  <td class="n" data-l="Max / 100 sh">${v.fee ? '$' + (100 * v.fee * .25).toFixed(2) : 'Free'}</td>
+  <td class="n" data-l="Maker rebate">${v.fee ? v.rebate * 100 + '%' : '—'}</td></tr>`).join('');
+
+/* ---------- Theme ---------- */
+$('themeBtn').addEventListener('click', () => {
+  const root = document.documentElement;
+  const dark = root.dataset.theme ? root.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  root.dataset.theme = dark ? 'light' : 'dark';
+  try { localStorage.setItem('theme', root.dataset.theme); } catch (e) {}
+});
+
+/* ---------- Shareable URL state ---------- */
+let urlTimer, ready = false;
+function scheduleURL() {
+  if (!ready) return;
+  clearTimeout(urlTimer);
+  urlTimer = setTimeout(() => {
+    const q = new URLSearchParams();
+    for (const id of Object.keys(FIELDS)) q.set(id, val[id]);
+    q.set('cat', cat);
+    q.set('maturity', $('maturityDate').value);
+    q.set('order', order);
+    if (order === 'taker') q.set('ycat', yCat);
+    try { history.replaceState(null, '', '?' + q + location.hash); } catch (e) {}
+  }, 400);
+}
+
+function loadURL() {
+  const q = new URLSearchParams(location.search);
+  for (const id of Object.keys(FIELDS)) {
+    const v = parseFloat(q.get(id));
+    if (isFinite(v)) setVal(id, v);
+  }
+  if (MM[q.get('cat')]) cat = q.get('cat');
+  if (MM[q.get('ycat')]) yCat = q.get('ycat');
+  if (q.get('order') === 'taker') order = 'taker';
+  const mat = q.get('maturity');
+  $('maturityDate').value = /^\d{4}-\d{2}-\d{2}$/.test(mat || '') ? mat : defaultMaturity();
+}
+
+let resizeTimer, lastW = innerWidth;
+addEventListener('resize', () => {
+  if (innerWidth === lastW) return;
+  lastW = innerWidth;
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => { calcCompound(); calcMM(); }, 150);
+});
+
+loadURL();
+renderCatTabs();
+calcCompound();
+calcMM();
+calcAnnual();
+ready = true;
+</script>
+</body>
+</html>
